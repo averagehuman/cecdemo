@@ -1,0 +1,46 @@
+#!/bin/bash
+
+set -e
+
+shopt -s extglob;
+
+error_and_exit () {
+    echo $1
+    exit 1
+}
+
+V4L_GIT_CHECKOUT_ROOT="${1%%+(/)}"
+[[ -n $V4L_GIT_CHECKOUT_ROOT ]] || error_and_exit "ERROR: v4l-utils root directory required"
+
+V4L_GIT_CHECKOUT_ROOT=$(realpath $V4L_GIT_CHECKOUT_ROOT)
+[[ -d $V4L_GIT_CHECKOUT_ROOT ]] || error_and_exit "ERROR: invalid source directory ${V4L_GIT_CHECKOUT_ROOT}"
+
+ANDROID_APP_DEST_ROOT=$(realpath "app/src/main/cpp")
+[[ -d $ANDROID_APP_DEST_ROOT ]] || error_and_exit "ERROR: invalid destination directory ${ANDROID_APP_DEST_ROOT}"
+
+
+SOURCES=(
+    "include/linux/cec.h"
+    "include/linux/cec-funcs.h"
+    "utils/common/cec-htng.h"
+    "utils/common/cec-htng-funcs.h"
+    "utils/common/cec-info.h"
+    "utils/common/cec-info.cpp"
+)
+
+DEST="${ANDROID_APP_DEST_ROOT}/v4l-utils"
+
+mkdir -p $DEST
+
+for f in ${SOURCES[@]}; do
+    fsrc="${V4L_GIT_CHECKOUT_ROOT}/$f"
+    fdst="${DEST}/$(basename $f)"
+    echo "Copy and update file: $fsrc"
+    cp $fsrc $fdst
+    sed -i '/^#include /s/<linux\/cec.h>/<v4l-utils\/cec.h>/g' $fdst
+    sed -i '/^#include /s/<cec-info.h>/<v4l-utils\/cec-info.h>/g' $fdst
+    sed -i '/^#include /s/"cec-htng.h"/<v4l-utils\/cec-htng.h>/g' $fdst
+done;
+
+echo "SUCCESS"
+
